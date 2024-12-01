@@ -72,7 +72,8 @@ class MainActivity : ComponentActivity() {
                             .addOnFailureListener {
                                 Toast.makeText(this, "Ошибка загрузки профиля", Toast.LENGTH_SHORT).show()
                             }
-                    } else {
+                    }
+                    else {
                         Toast.makeText(this, "Ошибка: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -115,6 +116,7 @@ class MainActivity : ComponentActivity() {
                 }
         }
     }
+
 
     // Регистрация пользователя
     private fun registerUser(email: String, password: String, nickname: String, updateScreen: (Screen) -> Unit) {
