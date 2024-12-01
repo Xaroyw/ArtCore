@@ -12,10 +12,10 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun LoginScreen(
-    onLogin: (email: String, password: String) -> Unit,
+    onLogin: (identifier: String, password: String) -> Unit,
     onSwitchToRegister: () -> Unit
 ) {
-    var email by remember { mutableStateOf("") }
+    var identifier by remember { mutableStateOf("") }  // Здесь будет как email, так и никнейм
     var password by remember { mutableStateOf("") }
 
     Column(
@@ -26,17 +26,21 @@ fun LoginScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(text = "Вход", modifier = Modifier.padding(8.dp))
+
+        // Поле для ввода email или никнейма
         BasicTextField(
-            value = email,
-            onValueChange = { email = it },
+            value = identifier,
+            onValueChange = { identifier = it },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp),
             decorationBox = { innerTextField ->
-                Text(text = if (email.isEmpty()) "Введите Email" else email)
+                Text(text = if (identifier.isEmpty()) "Введите Email или Никнейм" else identifier)
                 innerTextField()
             }
         )
+
+        // Поле для ввода пароля
         BasicTextField(
             value = password,
             onValueChange = { password = it },
@@ -49,11 +53,14 @@ fun LoginScreen(
                 innerTextField()
             }
         )
-        Button(onClick = { onLogin(email, password) }, modifier = Modifier.padding(8.dp)) {
+
+        Button(onClick = { onLogin(identifier, password) }, modifier = Modifier.padding(8.dp)) {
             Text(text = "Войти")
         }
+
         Button(onClick = onSwitchToRegister, modifier = Modifier.padding(8.dp)) {
             Text(text = "Нет аккаунта? Зарегистрироваться")
         }
     }
 }
+
