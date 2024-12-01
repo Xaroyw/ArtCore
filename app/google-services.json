@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "143741613042",
+    "project_id": "artcore-se-22",
+    "storage_bucket": "artcore-se-22.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:143741613042:android:a1a97b88936805cc45f16b",
+        "android_client_info": {
+          "package_name": "com.example.artcore"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBHM88_Sr7IShY_alWP43sVQNRGgqWsOQA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
