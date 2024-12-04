@@ -72,9 +72,14 @@ class MainActivity : ComponentActivity() {
                             .addOnFailureListener {
                                 Toast.makeText(this, "Ошибка загрузки профиля", Toast.LENGTH_SHORT).show()
                             }
-                    }
-                    else {
-                        Toast.makeText(this, "Ошибка: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                    } else {
+                        // Обработка ошибки при входе
+                        val errorMessage = task.exception?.message ?: "Неизвестная ошибка"
+                        if (errorMessage.contains("There is no user record")) {
+                            Toast.makeText(this, "Аккаунт не найден", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(this, "Ошибка: $errorMessage", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
         } else {
@@ -120,22 +125,88 @@ class MainActivity : ComponentActivity() {
 
     // Регистрация пользователя
     private fun registerUser(email: String, password: String, nickname: String, updateScreen: (Screen) -> Unit) {
-        auth.createUserWithEmailAndPassword(email, password)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    val userId = auth.currentUser?.uid ?: return@addOnCompleteListener
-                    database.child(userId).setValue(mapOf("email" to email, "nickname" to nickname))
-                        .addOnSuccessListener {
-                            updateScreen(Screen.Login)  // Обновление экрана на логин
-                        }
-                        .addOnFailureListener {
-                            Toast.makeText(this, "Ошибка сохранения профиля", Toast.LENGTH_SHORT).show()
-                        }
+        // Проверка уникальности email
+        database.orderByChild("email").equalTo(email).get()
+            .addOnCompleteListener { emailTask ->
+                if (emailTask.isSuccessful) {
+                    val emailExists = emailTask.result.childrenCount > 0
+                    if (emailExists) {
+                        // Email уже зарегистрирован
+                        Toast.makeText(
+                            this,
+                            "Пользователь с таким email уже существует",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    } else {
+                        // Проверка уникальности nickname
+                        database.orderByChild("nickname").equalTo(nickname).get()
+                            .addOnCompleteListener { nicknameTask ->
+                                if (nicknameTask.isSuccessful) {
+                                    val nicknameExists = nicknameTask.result.childrenCount > 0
+                                    if (nicknameExists) {
+                                        // Nickname уже зарегистрирован
+                                        Toast.makeText(
+                                            this,
+                                            "Пользователь с таким никнеймом уже существует",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    } else {
+                                        // Регистрация нового пользователя
+                                        auth.createUserWithEmailAndPassword(email, password)
+                                            .addOnCompleteListener { registerTask ->
+                                                if (registerTask.isSuccessful) {
+                                                    val userId = auth.currentUser?.uid
+                                                        ?: return@addOnCompleteListener
+                                                    database.child(userId).setValue(
+                                                        mapOf(
+                                                            "email" to email,
+                                                            "nickname" to nickname
+                                                        )
+                                                    )
+                                                        .addOnSuccessListener {
+                                                            Toast.makeText(
+                                                                this,
+                                                                "Регистрация успешна! Пожалуйста, войдите.",
+                                                                Toast.LENGTH_SHORT
+                                                            ).show()
+                                                            updateScreen(Screen.Login)
+                                                        }
+                                                        .addOnFailureListener { dbError ->
+                                                            Toast.makeText(
+                                                                this,
+                                                                "Ошибка сохранения профиля: ${dbError.message}",
+                                                                Toast.LENGTH_SHORT
+                                                            ).show()
+                                                        }
+                                                } else {
+                                                    // Ошибка при регистрации в Firebase Authentication
+                                                    Toast.makeText(
+                                                        this,
+                                                        "Ошибка регистрации: ${registerTask.exception?.message}",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            }
+                                    }
+                                } else {
+                                    Toast.makeText(
+                                        this,
+                                        "Ошибка проверки никнейма: ${nicknameTask.exception?.message}",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                    }
                 } else {
-                    Toast.makeText(this, "Ошибка: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this,
+                        "Ошибка проверки email: ${emailTask.exception?.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
     }
+
 }
 
 
