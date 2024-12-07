@@ -40,9 +40,19 @@ class MainActivity : ComponentActivity() {
                 is Screen.Profile -> ProfileScreen(
                     email = screen.email,
                     nickname = screen.nickname,
+                    onEditProfile = {
+                        currentScreen = Screen.EditProfile(screen.email, screen.nickname)
+                    }
+                )
+                is Screen.EditProfile -> EditProfile(
+                    email = screen.email,
+                    nickname = screen.nickname,
                     onLogout = {
                         auth.signOut()
                         currentScreen = Screen.Login
+                    },
+                    onBack = {
+                        currentScreen = Screen.Profile(screen.email, screen.nickname) // Возврат к профилю
                     }
                 )
             }
@@ -53,6 +63,7 @@ class MainActivity : ComponentActivity() {
         object Login : Screen()
         object Register : Screen()
         data class Profile(val email: String, val nickname: String) : Screen()
+        data class EditProfile(val email: String, val nickname: String) : Screen()
     }
 
     // Вход по email или никнейму
