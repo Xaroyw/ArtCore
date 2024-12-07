@@ -185,6 +185,11 @@ fun EditProfile(
                 Text(text = "Никнейм не может быть пустым!", color = MaterialTheme.colorScheme.error)
             }
 
+            // Отображение ошибки для занятого никнейма
+            if (!isNicknameUnique) {
+                Text(text = nicknameErrorMessage, color = MaterialTheme.colorScheme.error)
+            }
+
             Row {
                 Button(onClick = {
                     isEditingNickname = false
@@ -197,13 +202,25 @@ fun EditProfile(
                     if (newNickname.isNotEmpty()) {
                         val userId = auth.currentUser?.uid
                         if (userId != null) {
-                            database.child(userId).child("nickname").setValue(newNickname).addOnSuccessListener {
-                                currentNickname = newNickname // Обновляем текущий никнейм
-                                isChangesPending = false
-                                isEditingNickname = false
-                                Log.d("EditProfile", "Nickname updated successfully")
+                            // Проверяем, существует ли уже никнейм в базе данных
+                            database.orderByChild("nickname").equalTo(newNickname).get().addOnSuccessListener { snapshot ->
+                                if (snapshot.exists()) {
+                                    // Если никнейм уже существует, выводим ошибку
+                                    isNicknameUnique = false
+                                    nicknameErrorMessage = "Этот никнейм уже занят."
+                                } else {
+                                    // Если никнейм уникален, обновляем его
+                                    database.child(userId).child("nickname").setValue(newNickname).addOnSuccessListener {
+                                        currentNickname = newNickname // Обновляем текущий никнейм
+                                        isChangesPending = false
+                                        isEditingNickname = false
+                                        Log.d("EditProfile", "Nickname updated successfully")
+                                    }.addOnFailureListener {
+                                        Log.e("EditProfile", "Error updating nickname: ${it.message}")
+                                    }
+                                }
                             }.addOnFailureListener {
-                                Log.e("EditProfile", "Error updating nickname: ${it.message}")
+                                Log.e("EditProfile", "Error checking nickname availability: ${it.message}")
                             }
                         }
                     }
