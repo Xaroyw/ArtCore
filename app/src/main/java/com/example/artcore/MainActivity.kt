@@ -42,6 +42,9 @@ class MainActivity : ComponentActivity() {
                     nickname = screen.nickname,
                     onEditProfile = {
                         currentScreen = Screen.EditProfile(screen.email, screen.nickname)
+                    },
+                    onBack = {
+                        currentScreen = Screen.MainScreen(screen.email, screen.nickname) // Возврат к профилю
                     }
                 )
                 is Screen.EditProfile -> EditProfile(
@@ -55,6 +58,11 @@ class MainActivity : ComponentActivity() {
                         currentScreen = Screen.Profile(screen.email, screen.nickname) // Возврат к профилю
                     }
                 )
+                is Screen.MainScreen -> MainScreen(
+                    onNavigateToProfile = {
+                        currentScreen = Screen.Profile(screen.email, screen.nickname)
+                    }
+                )
             }
         }
     }
@@ -64,6 +72,7 @@ class MainActivity : ComponentActivity() {
         object Register : Screen()
         data class Profile(val email: String, val nickname: String) : Screen()
         data class EditProfile(val email: String, val nickname: String) : Screen()
+        data class MainScreen(val email: String, val nickname: String) : Screen()
     }
 
     // Вход по email или никнейму
@@ -78,7 +87,7 @@ class MainActivity : ComponentActivity() {
                             .addOnSuccessListener { snapshot ->
                                 val email = snapshot.child("email").value as? String ?: ""
                                 val nickname = snapshot.child("nickname").value as? String ?: ""
-                                updateScreen(Screen.Profile(email, nickname))  // Обновление экрана на профиль
+                                updateScreen(Screen.MainScreen(email, nickname))  // Обновление экрана на профиль
                             }
                             .addOnFailureListener {
                                 Toast.makeText(this, "Ошибка загрузки профиля", Toast.LENGTH_SHORT).show()
@@ -111,7 +120,7 @@ class MainActivity : ComponentActivity() {
                                             database.child(userId).get()
                                                 .addOnSuccessListener { snapshot ->
                                                     val nickname = snapshot.child("nickname").value as? String ?: ""
-                                                    updateScreen(Screen.Profile(email, nickname))  // Обновление экрана на профиль
+                                                    updateScreen(Screen.MainScreen(email, nickname))  // Обновление экрана на профиль
                                                 }
                                                 .addOnFailureListener {
                                                     Toast.makeText(this, "Ошибка загрузки профиля", Toast.LENGTH_SHORT).show()

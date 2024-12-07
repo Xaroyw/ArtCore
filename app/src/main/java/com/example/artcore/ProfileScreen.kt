@@ -27,7 +27,8 @@ import com.google.firebase.storage.FirebaseStorage
 fun ProfileScreen(
     email: String,
     nickname: String,
-    onEditProfile: () -> Unit
+    onEditProfile: () -> Unit,
+    onBack: () -> Unit
 ) {
     var currentNickname by remember { mutableStateOf(nickname) }
     val imageUri = remember { mutableStateOf<Uri?>(null) }
@@ -99,6 +100,10 @@ fun ProfileScreen(
         // Кнопка для перехода на страницу редактирования профиля
         Button(onClick = onEditProfile) {
             Text("Редактировать профиль")
+        }
+
+        Button(onClick = onBack) {
+            Text("Назад")
         }
     }
 }
