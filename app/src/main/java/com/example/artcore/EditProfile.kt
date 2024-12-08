@@ -125,7 +125,7 @@ fun EditProfile(
                         .padding(32.dp),
                     contentScale = ContentScale.Fit
                 )
-                // Кнопки внутри Box, чтобы они отображались поверх изображения
+                // Кнопки внутри Box
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -143,6 +143,29 @@ fun EditProfile(
                         Button(onClick = { showFullAvatar = false }) {
                             Text("Закрыть")
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Кнопка для удаления аватарки
+                    Button(onClick = {
+                        val userId = auth.currentUser?.uid
+                        if (userId != null) {
+                            val defaultImageUri = Uri.parse("android.resource://com.example.artcore/drawable/ic_default_avatar")
+                            database.child(userId).child("profileImageUrl").removeValue().addOnSuccessListener {
+                                imageUri = defaultImageUri // Сбрасываем URI на изображение по умолчанию
+                                storage.reference.child("profile_images/$userId").delete()
+                                    .addOnSuccessListener {
+                                        Log.d("EditProfile", "Avatar deleted successfully")
+                                    }.addOnFailureListener {
+                                        Log.e("EditProfile", "Error deleting avatar: ${it.message}")
+                                    }
+                            }.addOnFailureListener {
+                                Log.e("EditProfile", "Error removing avatar URL from database: ${it.message}")
+                            }
+                        }
+                    }) {
+                        Text("Удалить аватар")
                     }
                 }
             }
