@@ -43,6 +43,7 @@ fun ProfileScreen(
     var selectedImageUrl by remember { mutableStateOf<String?>(null) }
     var showFullImage by remember { mutableStateOf(false) }
     var imageToUpload by remember { mutableStateOf<Uri?>(null) } // Store selected image
+    var showNewImagePreview by remember { mutableStateOf(false) } // Preview for new image
 
     val auth: FirebaseAuth = FirebaseAuth.getInstance()
     val database = FirebaseDatabase.getInstance().reference.child("users")
@@ -56,7 +57,7 @@ fun ProfileScreen(
         onResult = { uri ->
             if (uri != null) {
                 imageToUpload = uri // Store the selected image URI
-                showFullImage = true // Show the preview
+                showNewImagePreview = true // Show the preview of the new image
             }
         }
     )
@@ -149,7 +150,7 @@ fun ProfileScreen(
         }
 
         // Show full image when clicked
-        if (showFullImage) {
+        if (showFullImage && selectedImageUrl != null) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -181,8 +182,6 @@ fun ProfileScreen(
                         deleteImageFromFirebase(selectedImageUrl, userId, storage, userProfileRef) { remainingImages ->
                             uploadedImages = remainingImages
                         }
-                    } else {
-                        Log.d("ProfileScreen", "Attempted to delete avatar, but it cannot be deleted.")
                     }
                     showFullImage = false // Закрыть полноэкранное изображение после удаления
                 },
@@ -197,11 +196,11 @@ fun ProfileScreen(
         }
 
         // Full screen preview and upload section for new image
-        if (imageToUpload != null && showFullImage) {
+        if (showNewImagePreview && imageToUpload != null) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(color = MaterialTheme.colorScheme.background.copy(alpha = 0.8f))
+                    .background(color = MaterialTheme.colorScheme.background)
                     .zIndex(2f)
             ) {
                 Image(
@@ -221,7 +220,7 @@ fun ProfileScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Button(
-                        onClick = { showFullImage = false }, // Cancel
+                        onClick = { showNewImagePreview = false }, // Cancel
                         modifier = Modifier.fillMaxWidth(0.45f)
                     ) {
                         Text("Отмена")
@@ -233,7 +232,7 @@ fun ProfileScreen(
                                 uploadImageToFirebase(uri, userId, storage, userProfileRef) { newImage ->
                                     uploadedImages = uploadedImages + newImage
                                 }
-                                showFullImage = false // Close preview after upload
+                                showNewImagePreview = false // Close preview after upload
                             }
                         },
                         modifier = Modifier.fillMaxWidth(0.45f)
@@ -276,6 +275,7 @@ private fun uploadImageToFirebase(
             Log.e("ProfileScreen", "Image upload failed: ${e.message}")
         }
 }
+
 
 private fun deleteImageFromFirebase(
     imageUrl: String?,
