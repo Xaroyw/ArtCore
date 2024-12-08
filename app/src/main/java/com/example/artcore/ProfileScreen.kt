@@ -95,11 +95,8 @@ fun ProfileScreen(
                 modifier = Modifier
                     .size(120.dp)
                     .clip(CircleShape)
-                    .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
-                    .clickable {
-                        selectedImageUrl = profileImageUrl
-                        showFullImage = true
-                    }
+                    .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
+                contentScale = ContentScale.Crop
             )
 
             Spacer(modifier = Modifier.height(16.dp))

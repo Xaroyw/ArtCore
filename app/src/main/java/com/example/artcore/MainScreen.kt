@@ -20,6 +20,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.ui.layout.ContentScale
 
 @OptIn(ExperimentalMaterial3Api::class)  // Отключаем предупреждение
 @Composable
@@ -63,7 +64,8 @@ fun MainScreen(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .clickable { onNavigateToProfile() }
+                                .clickable { onNavigateToProfile() },
+                            contentScale = ContentScale.Crop
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(text = nickname)
