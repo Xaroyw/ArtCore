@@ -42,6 +42,7 @@ fun ProfileScreen(
     var profileImageUrl by remember { mutableStateOf<String?>(null) }
     var selectedImageUrl by remember { mutableStateOf<String?>(null) }
     var showFullImage by remember { mutableStateOf(false) }
+    var imageToUpload by remember { mutableStateOf<Uri?>(null) } // Store selected image
 
     val auth: FirebaseAuth = FirebaseAuth.getInstance()
     val database = FirebaseDatabase.getInstance().reference.child("users")
@@ -54,9 +55,8 @@ fun ProfileScreen(
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri ->
             if (uri != null) {
-                uploadImageToFirebase(uri, userId, storage, userProfileRef) { newImage ->
-                    uploadedImages = uploadedImages + newImage
-                }
+                imageToUpload = uri // Store the selected image URI
+                showFullImage = true // Show the preview
             }
         }
     )
@@ -176,14 +176,12 @@ fun ProfileScreen(
                     Text("Закрыть")
                 }
 
-                // Удалить кнопку не используется для аватарки
                 Button(onClick = {
                     if (selectedImageUrl != profileImageUrl) {
                         deleteImageFromFirebase(selectedImageUrl, userId, storage, userProfileRef) { remainingImages ->
                             uploadedImages = remainingImages
                         }
                     } else {
-                        // Аватар не удаляем
                         Log.d("ProfileScreen", "Attempted to delete avatar, but it cannot be deleted.")
                     }
                     showFullImage = false // Закрыть полноэкранное изображение после удаления
@@ -191,14 +189,63 @@ fun ProfileScreen(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(4.dp)
-                        .zIndex(1f)  // Это гарантирует, что кнопка будет сверху
+                        .zIndex(1f)
                 ) {
                     Text("Удалить")
                 }
             }
         }
+
+        // Full screen preview and upload section for new image
+        if (imageToUpload != null && showFullImage) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(color = MaterialTheme.colorScheme.background.copy(alpha = 0.8f))
+                    .zIndex(2f)
+            ) {
+                Image(
+                    painter = rememberImagePainter(imageToUpload),
+                    contentDescription = "Preview Image",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    contentScale = ContentScale.Fit
+                )
+
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Button(
+                        onClick = { showFullImage = false }, // Cancel
+                        modifier = Modifier.fillMaxWidth(0.45f)
+                    ) {
+                        Text("Отмена")
+                    }
+
+                    Button(
+                        onClick = {
+                            imageToUpload?.let { uri ->
+                                uploadImageToFirebase(uri, userId, storage, userProfileRef) { newImage ->
+                                    uploadedImages = uploadedImages + newImage
+                                }
+                                showFullImage = false // Close preview after upload
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(0.45f)
+                    ) {
+                        Text("+")
+                    }
+                }
+            }
+        }
     }
 }
+
 
 private fun uploadImageToFirebase(
     uri: Uri,
