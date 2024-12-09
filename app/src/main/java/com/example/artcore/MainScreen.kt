@@ -57,17 +57,20 @@ fun MainScreen(
         val imagesRef = database.child("allImages") // Предполагается, что изображения находятся в "allImages"
         imagesRef.get().addOnSuccessListener { snapshot ->
             val fetchedImages = snapshot.children.mapNotNull { imageSnapshot ->
-                val imageUrl = imageSnapshot.child("url").getValue(String::class.java)
+                val imageUrl = imageSnapshot.child("imageUrl").getValue(String::class.java)
                 val uploaderNickname = imageSnapshot.child("nickname").getValue(String::class.java)
                 if (imageUrl != null && uploaderNickname != null) imageUrl to uploaderNickname else null
             }
 
+            // Фильтрация изображений, исключаем те, которые принадлежат текущему пользователю
+            val filteredImages = fetchedImages.filter { it.second != nickname }
+
             // Логирование количества полученных изображений
-            Log.d("MainScreen", "Fetched ${fetchedImages.size} images from database")
+            Log.d("MainScreen", "Fetched ${filteredImages.size} images from database, excluding current user's images")
 
             // Случайная сортировка изображений
-            images = fetchedImages.shuffled() // Перемешиваем изображения случайным образом
-            Log.d("MainScreen", "Images shuffled, new order: ${fetchedImages.shuffled()}")
+            images = filteredImages.shuffled() // Перемешиваем изображения случайным образом
+            Log.d("MainScreen", "Images shuffled, new order: ${filteredImages.shuffled()}")
         }.addOnFailureListener {
             Log.e("MainScreen", "Failed to load images", it)
         }
@@ -137,3 +140,4 @@ fun ImageCard(
         )
     }
 }
+
