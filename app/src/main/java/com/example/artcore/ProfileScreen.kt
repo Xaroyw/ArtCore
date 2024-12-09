@@ -179,7 +179,7 @@ fun ProfileScreen(
 
                 Button(onClick = {
                     if (selectedImageUrl != profileImageUrl) {
-                        deleteImageFromFirebase(selectedImageUrl, userId, storage, userProfileRef) { remainingImages ->
+                        deleteImageFromFirebase(selectedImageUrl, userId, storage, userProfileRef, currentNickname) { remainingImages ->
                             uploadedImages = remainingImages
                         }
                     }
@@ -229,7 +229,7 @@ fun ProfileScreen(
                     Button(
                         onClick = {
                             imageToUpload?.let { uri ->
-                                uploadImageToFirebase(uri, userId, storage, userProfileRef) { newImage ->
+                                uploadImageToFirebase(uri, userId, storage, userProfileRef, currentNickname) { newImage ->
                                     uploadedImages = uploadedImages + newImage
                                 }
                                 showNewImagePreview = false // Close preview after upload
@@ -245,87 +245,123 @@ fun ProfileScreen(
     }
 }
 
-
 private fun uploadImageToFirebase(
     uri: Uri,
     userId: String?,
     storage: FirebaseStorage,
     userProfileRef: DatabaseReference?,
+    nickname: String,
     onImageUploaded: (String) -> Unit
 ) {
     if (userId == null) return
 
     val timestamp = System.currentTimeMillis()
-    val storageRef = storage.reference.child("users/$userId/uploadedImages/$timestamp.jpg")
+    val uniqueImageKey = FirebaseDatabase.getInstance().reference.child("allImages").push().key ?: timestamp.toString()
 
-    // Логируем URL изображения перед загрузкой
+    // User-specific folder including the nickname
+    val userStorageRef = storage.reference.child("users/$nickname/uploadedImages/$uniqueImageKey.jpg")
+    // Common images folder
+    val allImagesStorageRef = storage.reference.child("allImages/$uniqueImageKey.jpg")
+
+    // Log URI for debugging
     Log.d("ProfileScreen", "Uploading image: ${uri.toString()}")
 
-    storageRef.putFile(uri)
+    // Upload image to user-specific folder
+    userStorageRef.putFile(uri)
         .addOnSuccessListener {
-            storageRef.downloadUrl.addOnSuccessListener { downloadUri ->
-                val imageUrl = downloadUri.toString()
-                // Логируем URL после загрузки
-                Log.d("ProfileScreen", "Image uploaded successfully. URL: $imageUrl")
-                userProfileRef?.child("uploadedImages")?.push()?.setValue(imageUrl)
-                onImageUploaded(imageUrl)
+            userStorageRef.downloadUrl.addOnSuccessListener { userDownloadUri ->
+                val userImageUrl = userDownloadUri.toString()
+                Log.d("ProfileScreen", "Image uploaded to user folder: $userImageUrl")
+
+                // Save the image URL in the database
+                userProfileRef?.child("uploadedImages")?.push()?.setValue(userImageUrl)
+
+                // Notify UI with the uploaded image URL
+                onImageUploaded(userImageUrl)
+
+                // Upload to the common folder
+                allImagesStorageRef.putFile(uri)
+                    .addOnSuccessListener {
+                        allImagesStorageRef.downloadUrl.addOnSuccessListener { allImagesDownloadUri ->
+                            val allImageUrl = allImagesDownloadUri.toString()
+                            Log.d("ProfileScreen", "Image uploaded to allImages folder: $allImageUrl")
+
+                            // Save in the database with nickname and unique key
+                            val imageData = mapOf(
+                                "imageUrl" to allImageUrl,
+                                "nickname" to nickname
+                            )
+                            FirebaseDatabase.getInstance().reference
+                                .child("allImages")
+                                .child(uniqueImageKey)  // Use unique key here
+                                .setValue(imageData)
+                        }
+                    }
             }
         }
         .addOnFailureListener { e ->
-            Log.e("ProfileScreen", "Image upload failed: ${e.message}")
+            Log.e("ProfileScreen", "Failed to upload image: ${e.message}")
         }
 }
-
-
 private fun deleteImageFromFirebase(
     imageUrl: String?,
     userId: String?,
     storage: FirebaseStorage,
     userProfileRef: DatabaseReference?,
+    nickname: String,
     onImageDeleted: (List<String>) -> Unit
 ) {
     if (imageUrl == null || userId == null) return
 
-    // Логируем URL изображения перед удалением
+    // Логируем URL изображения и ID пользователя
     Log.d("ProfileScreen", "Deleting image: $imageUrl for user: $userId")
 
-    // Декодирование URL для получения правильного пути
+    // Декодируем URL изображения и получаем имя файла (уникальный ключ)
     val decodedUrl = Uri.parse(imageUrl)?.path?.replace("%2F", "/")
-    val storageRef = storage.reference.child("users/$userId/uploadedImages/${Uri.parse(decodedUrl)?.lastPathSegment}")
+    val imageFileName = Uri.parse(decodedUrl)?.lastPathSegment
 
-    // Проверка существования файла перед удалением
-    storageRef.metadata.addOnSuccessListener {
-        storageRef.delete()
-            .addOnSuccessListener {
-                // Логируем успешное удаление изображения из Storage
-                Log.d("ProfileScreen", "Image deleted from Storage")
+    // Используем уникальный ключ для поиска
+    val uniqueImageKey = imageFileName?.substringBefore(".jpg") ?: return
 
-                // Удаление изображения из Realtime Database
-                userProfileRef?.child("uploadedImages")
-                    ?.orderByValue()
-                    ?.equalTo(imageUrl)
-                    ?.limitToFirst(1)
-                    ?.get()
-                    ?.addOnSuccessListener { snapshot ->
-                        snapshot.children.firstOrNull()?.ref?.removeValue()
-                        Log.d("ProfileScreen", "Image deleted from Database")
+    // Получаем ссылки на изображения в папках Firebase Storage
+    val userStorageRef = storage.reference.child("users/$nickname/uploadedImages/$uniqueImageKey.jpg")
+    val allImagesStorageRef = storage.reference.child("allImages/$uniqueImageKey.jpg")
 
-                        // Обновление UI с оставшимися изображениями
-                        userProfileRef?.child("uploadedImages")?.get()
-                            ?.addOnSuccessListener { remainingSnapshot ->
-                                val remainingImages = remainingSnapshot.children
-                                    .mapNotNull { it.getValue(String::class.java) }
-                                onImageDeleted(remainingImages)
-                            }
-                    }
-            }
-            .addOnFailureListener { e ->
-                Log.e("ProfileScreen", "Error deleting image: ${e.message}")
-            }
-    }.addOnFailureListener {
-        // Файл не существует
-        Log.e("ProfileScreen", "File does not exist at the specified location.")
-        // Обработайте ошибку, например, уведомив пользователя, что файл не найден
-    }
+    // Удаляем изображение из папки пользователя в Firebase Storage
+    userStorageRef.delete()
+        .addOnSuccessListener {
+            Log.d("ProfileScreen", "Image deleted from user's folder")
+
+            // Удаляем ссылку на изображение из базы данных пользователя
+            userProfileRef?.child("uploadedImages")
+                ?.orderByValue()
+                ?.equalTo(imageUrl)
+                ?.limitToFirst(1)
+                ?.get()
+                ?.addOnSuccessListener { snapshot ->
+                    snapshot.children.firstOrNull()?.ref?.removeValue()
+                    Log.d("ProfileScreen", "Image reference deleted from user's database uploadedImages")
+                }
+        }
+        .addOnFailureListener { e ->
+            Log.e("ProfileScreen", "Error deleting image from user's folder: ${e.message}")
+        }
+
+    // Удаляем изображение из общей папки в Firebase Storage
+    allImagesStorageRef.delete()
+        .addOnSuccessListener {
+            Log.d("ProfileScreen", "Image deleted from allImages folder")
+
+            // Удаляем ссылку на изображение из базы данных всех изображений по уникальному ключу
+            FirebaseDatabase.getInstance().reference
+                .child("allImages")
+                .child(uniqueImageKey)  // Используем уникальный ключ
+                .removeValue()
+                .addOnSuccessListener {
+                    Log.d("ProfileScreen", "Image reference deleted from allImages database")
+                }
+        }
+        .addOnFailureListener { e ->
+            Log.e("ProfileScreen", "Error deleting image from allImages folder: ${e.message}")
+        }
 }
-
