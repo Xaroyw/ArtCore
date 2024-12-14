@@ -8,6 +8,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -29,6 +30,11 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.IntSize
 
 @Composable
 fun ProfileScreen(
@@ -42,8 +48,14 @@ fun ProfileScreen(
     var profileImageUrl by remember { mutableStateOf<String?>(null) }
     var selectedImageUrl by remember { mutableStateOf<String?>(null) }
     var showFullImage by remember { mutableStateOf(false) }
-    var imageToUpload by remember { mutableStateOf<Uri?>(null) } // Store selected image
-    var showNewImagePreview by remember { mutableStateOf(false) } // Preview for new image
+    var imageToUpload by remember { mutableStateOf<Uri?>(null) }
+    var showNewImagePreview by remember { mutableStateOf(false) }
+
+    var scale by remember { mutableStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset(0f, 0f)) }
+
+    val maxScale = 3f
+    val minScale = 1f
 
     val auth: FirebaseAuth = FirebaseAuth.getInstance()
     val database = FirebaseDatabase.getInstance().reference.child("users")
@@ -56,8 +68,8 @@ fun ProfileScreen(
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri ->
             if (uri != null) {
-                imageToUpload = uri // Store the selected image URI
-                showNewImagePreview = true // Show the preview of the new image
+                imageToUpload = uri
+                showNewImagePreview = true
             }
         }
     )
@@ -82,9 +94,7 @@ fun ProfileScreen(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Column(
-            modifier = Modifier.align(Alignment.TopCenter)
-        ) {
+        Column(modifier = Modifier.align(Alignment.TopCenter)) {
             val painter = rememberImagePainter(
                 data = profileImageUrl ?: R.drawable.ic_default_avatar
             )
@@ -149,13 +159,18 @@ fun ProfileScreen(
             }
         }
 
-        // Show full image when clicked
+        // Full image display logic
         if (showFullImage && selectedImageUrl != null) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(color = MaterialTheme.colorScheme.background)
                     .zIndex(1f)
+                    .clickable(
+                        onClick = { /* empty action */ },
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    )
             ) {
                 Image(
                     painter = rememberImagePainter(selectedImageUrl),
@@ -163,12 +178,45 @@ fun ProfileScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .zIndex(1f)
-                        .padding(16.dp),
+                        .padding(16.dp)
+                        .pointerInput(Unit) {
+                            detectTransformGestures { _, pan, zoom, _ ->
+                                // Расчет нового масштаба
+                                scale = (scale * zoom).coerceIn(minScale, maxScale)
+
+                                // Обновление смещения с учетом панорамирования, удерживая изображение в пределах экрана
+                                if (scale == minScale) {
+                                    offset = Offset(0f, 0f)
+                                } else {
+                                    val newOffsetX = offset.x + pan.x
+                                    val newOffsetY = offset.y + pan.y
+
+                                    // Ограничиваем смещение, чтобы изображение не выходило за пределы экрана
+                                    val maxOffsetX = (size.width * scale - size.width) / 2
+                                    val maxOffsetY = (size.height * scale - size.height) / 2
+
+                                    offset = Offset(
+                                        x = newOffsetX.coerceIn(-maxOffsetX, maxOffsetX),
+                                        y = newOffsetY.coerceIn(-maxOffsetY, maxOffsetY)
+                                    )
+                                }
+                            }
+                        }
+                        .graphicsLayer(
+                            scaleX = scale,
+                            scaleY = scale,
+                            translationX = offset.x,
+                            translationY = offset.y
+                        ),
                     contentScale = ContentScale.Fit
                 )
 
                 Button(
-                    onClick = { showFullImage = false },
+                    onClick = {
+                        showFullImage = false
+                        scale = 1f // Reset scale
+                        offset = Offset(0f, 0f) // Reset offset
+                    },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(16.dp)
@@ -176,7 +224,6 @@ fun ProfileScreen(
                 ) {
                     Text("Закрыть")
                 }
-
                 Button(onClick = {
                     if (selectedImageUrl != profileImageUrl) {
                         deleteImageFromFirebase(selectedImageUrl, userId, storage, userProfileRef, currentNickname) { remainingImages ->
@@ -220,7 +267,7 @@ fun ProfileScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Button(
-                        onClick = { showNewImagePreview = false }, // Cancel
+                        onClick = { showNewImagePreview = false },
                         modifier = Modifier.fillMaxWidth(0.45f)
                     ) {
                         Text("Отмена")
@@ -232,7 +279,7 @@ fun ProfileScreen(
                                 uploadImageToFirebase(uri, userId, storage, userProfileRef, currentNickname) { newImage ->
                                     uploadedImages = uploadedImages + newImage
                                 }
-                                showNewImagePreview = false // Close preview after upload
+                                showNewImagePreview = false
                             }
                         },
                         modifier = Modifier.fillMaxWidth(0.45f)
@@ -244,6 +291,7 @@ fun ProfileScreen(
         }
     }
 }
+
 
 private fun uploadImageToFirebase(
     uri: Uri,

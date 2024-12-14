@@ -19,6 +19,8 @@
     import com.google.firebase.database.FirebaseDatabase
     import com.google.firebase.storage.FirebaseStorage
     import androidx.compose.foundation.clickable
+    import androidx.compose.foundation.gestures.detectTransformGestures
+    import androidx.compose.foundation.interaction.MutableInteractionSource
     import androidx.compose.foundation.lazy.grid.GridCells
     import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
     import androidx.compose.foundation.lazy.grid.items
@@ -33,6 +35,13 @@
     import coil.compose.rememberImagePainter
     import coil.compose.AsyncImagePainter
     import androidx.compose.runtime.*
+    import androidx.compose.ui.geometry.Offset
+    import androidx.compose.ui.graphics.graphicsLayer
+    import androidx.compose.ui.input.pointer.pointerInput
+    import androidx.compose.foundation.gestures.detectTransformGestures
+    import androidx.compose.ui.input.pointer.pointerInput
+    import androidx.compose.ui.graphics.graphicsLayer
+    import androidx.compose.ui.unit.IntSize
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
@@ -176,17 +185,57 @@
     ) {
         val painter = rememberImagePainter(imageUrl)
 
+        var scale by remember { mutableStateOf(1f) }
+        var offset by remember { mutableStateOf(Offset(0f, 0f)) }
+
+        val maxScale = 3f
+        val minScale = 1f
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
+                .clickable(
+                    onClick = { /* Пустое действие для блокировки кликов под слоем */ },
+                    indication = null, // Убираем эффект нажатия
+                    interactionSource = remember { MutableInteractionSource() } // Не сохраняем состояние
+                )
         ) {
             Image(
                 painter = painter,
                 contentDescription = "Full screen image",
                 modifier = Modifier
                     .fillMaxSize()
-                    .align(Alignment.Center),
+                    .align(Alignment.Center)
+                    .pointerInput(Unit) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            // Расчет нового масштаба
+                            scale = (scale * zoom).coerceIn(minScale, maxScale)
+
+                            // Обновление смещения с учетом панорамирования, удерживая изображение в пределах экрана
+                            if (scale == minScale) {
+                                offset = Offset(0f, 0f)
+                            } else {
+                                val newOffsetX = offset.x + pan.x
+                                val newOffsetY = offset.y + pan.y
+
+                                // Ограничиваем смещение, чтобы изображение не выходило за пределы экрана
+                                val maxOffsetX = (size.width * scale - size.width) / 2
+                                val maxOffsetY = (size.height * scale - size.height) / 2
+
+                                offset = Offset(
+                                    x = newOffsetX.coerceIn(-maxOffsetX, maxOffsetX),
+                                    y = newOffsetY.coerceIn(-maxOffsetY, maxOffsetY)
+                                )
+                            }
+                        }
+                    }
+                    .graphicsLayer(
+                        scaleX = scale,
+                        scaleY = scale,
+                        translationX = offset.x,
+                        translationY = offset.y
+                    ),
                 contentScale = ContentScale.Fit
             )
 

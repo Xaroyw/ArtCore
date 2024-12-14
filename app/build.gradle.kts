@@ -41,7 +41,7 @@ android {
 }
 
 dependencies {
-    implementation ("androidx.compose.material3:material3:1.1.1")
+    implementation("androidx.compose.material3:material3:1.1.1")
     implementation("androidx.compose.material:material:1.4.0")  // Для Material2
     implementation(platform("com.google.firebase:firebase-bom:32.1.1"))
     implementation("com.google.firebase:firebase-auth-ktx")
