@@ -43,6 +43,9 @@ class MainActivity : ComponentActivity() {
                     onEditProfile = {
                         currentScreen = Screen.EditProfile(screen.email, screen.nickname)
                     },
+                    onLikedPosts = {
+                        currentScreen = Screen.LikedPostsView(screen.email, screen.nickname)
+                    },
                     onBack = {
                         currentScreen = Screen.MainScreen(screen.email, screen.nickname) // Возврат к профилю
                     }
@@ -63,6 +66,13 @@ class MainActivity : ComponentActivity() {
                         currentScreen = Screen.Profile(screen.email, screen.nickname)
                     }
                 )
+                is Screen.LikedPostsView -> LikedPostsView(
+                    email = screen.email,  // Assuming `screen.email` contains the email
+                    nickname = screen.nickname,  // Assuming `screen.nickname` contains the nickname
+                    onBack = {
+                        currentScreen = Screen.Profile(screen.email, screen.nickname) // Возврат к профилю
+                    }
+                )
             }
         }
     }
@@ -73,6 +83,7 @@ class MainActivity : ComponentActivity() {
         data class Profile(val email: String, val nickname: String) : Screen()
         data class EditProfile(val email: String, val nickname: String) : Screen()
         data class MainScreen(val email: String, val nickname: String) : Screen()
+        data class LikedPostsView(val email: String, val nickname: String) : Screen()
     }
 
     // Вход по email или никнейму

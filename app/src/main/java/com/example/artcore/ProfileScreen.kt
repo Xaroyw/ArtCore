@@ -41,6 +41,7 @@ fun ProfileScreen(
     email: String,
     nickname: String,
     onEditProfile: () -> Unit,
+    onLikedPosts: () -> Unit,
     onBack: () -> Unit
 ) {
     var currentNickname by remember { mutableStateOf(nickname) }
@@ -125,6 +126,11 @@ fun ProfileScreen(
 
             Button(onClick = onEditProfile) {
                 Text("Редактировать профиль")
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(onClick = onLikedPosts) {
+                Text("Понравившиеся посты")
             }
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -351,6 +357,7 @@ private fun uploadImageToFirebase(
             Log.e("ProfileScreen", "Failed to upload image: ${e.message}")
         }
 }
+
 private fun deleteImageFromFirebase(
     imageUrl: String?,
     userId: String?,
