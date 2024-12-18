@@ -25,6 +25,10 @@ import coil.compose.rememberImagePainter
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 @Composable
 fun EditProfile(
@@ -50,6 +54,9 @@ fun EditProfile(
     val auth: FirebaseAuth = FirebaseAuth.getInstance()
     val storage: FirebaseStorage = FirebaseStorage.getInstance()
     val database = FirebaseDatabase.getInstance().reference.child("users")
+
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     // Загрузка изображения профиля
     val uploadImage = { uri: Uri ->

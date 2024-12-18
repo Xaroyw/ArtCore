@@ -71,6 +71,9 @@ fun MainScreen(
     var images by remember { mutableStateOf(listOf<Pair<String, String>>()) } // (Image URL, Uploader Nickname)
     var isRefreshing by remember { mutableStateOf(false) }
     var isImageOpen by remember { mutableStateOf(false) }
+    var isStatsDialogOpen by remember { mutableStateOf(false) }
+    var userCount by remember { mutableStateOf(0) }
+    var imageCount by remember { mutableStateOf(0) }
 
     // Создаем корутинный scope
     val coroutineScope = rememberCoroutineScope()
@@ -114,7 +117,15 @@ fun MainScreen(
     }
 
     LaunchedEffect(Unit) {
-        loadImages() // Вызываем suspend-функцию внутри корутины
+        loadUserCount(database) { count ->
+            userCount = count
+            Log.d("MainScreen", "User count: $count")
+        }
+        loadImageCount(database) { count ->
+            imageCount = count
+            Log.d("MainScreen", "Image count: $count")
+        }
+        loadImages()
     }
 
     Scaffold(
@@ -135,7 +146,12 @@ fun MainScreen(
                                 contentScale = ContentScale.Crop
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = nickname)
+                            Text("ArtCore")
+                        }
+                    },
+                    actions = {
+                        Button(onClick = { isStatsDialogOpen = true }) {
+                            Text("Статистика")
                         }
                     }
                 )
@@ -173,6 +189,14 @@ fun MainScreen(
             }
         }
 
+        if (isStatsDialogOpen) {
+            StatsDialog(
+                userCount = userCount,
+                imageCount = imageCount,
+                onDismiss = { isStatsDialogOpen = false }
+            )
+        }
+
         if (isImageOpen) {
             FullScreenImage(
                 imageUrl = selectedImageUrl,
@@ -184,6 +208,26 @@ fun MainScreen(
     }
 }
 
+@Composable
+fun StatsDialog(userCount: Int, imageCount: Int, onDismiss: () -> Unit) {
+    androidx.compose.material.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(text = "Статистика")
+        },
+        text = {
+            Column {
+                Text(text = "Пользователей: $userCount")
+                Text(text = "Изображений: $imageCount")
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("Закрыть")
+            }
+        }
+    )
+}
 
 @Composable
 fun ImageCard(
@@ -356,4 +400,30 @@ fun FullScreenImage(
             }
         }
     }
+}
+
+// Функция для подсчёта пользователей
+fun loadUserCount(database: DatabaseReference, onResult: (Int) -> Unit) {
+    database.child("users").get()
+        .addOnSuccessListener { snapshot ->
+            val count = snapshot.childrenCount.toInt()
+            onResult(count)
+        }
+        .addOnFailureListener { exception ->
+            Log.e("MainScreen", "Failed to load user count", exception)
+            onResult(0)
+        }
+}
+
+// Функция для подсчёта изображений
+fun loadImageCount(database: DatabaseReference, onResult: (Int) -> Unit) {
+    database.child("allImages").get()
+        .addOnSuccessListener { snapshot ->
+            val count = snapshot.childrenCount.toInt()
+            onResult(count)
+        }
+        .addOnFailureListener { exception ->
+            Log.e("MainScreen", "Failed to load image count", exception)
+            onResult(0)
+        }
 }
