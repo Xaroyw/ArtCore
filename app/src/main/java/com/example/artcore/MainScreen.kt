@@ -146,7 +146,12 @@ fun MainScreen(
                                 contentScale = ContentScale.Crop
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("ArtCore")
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("ArtCore")
+                            }
                         }
                     },
                     actions = {

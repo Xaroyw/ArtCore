@@ -51,6 +51,9 @@ fun ProfileScreen(
     var showFullImage by remember { mutableStateOf(false) }
     var imageToUpload by remember { mutableStateOf<Uri?>(null) }
     var showNewImagePreview by remember { mutableStateOf(false) }
+    var isDialogOpen by remember { mutableStateOf(false) }
+    var likeCount by remember { mutableStateOf(0) }
+    var uploadImageCount by remember { mutableStateOf(0) }
 
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset(0f, 0f)) }
@@ -83,6 +86,12 @@ fun ProfileScreen(
                     profileImageUrl = snapshot.child("profileImageUrl").getValue(String::class.java)
                     uploadedImages = snapshot.child("uploadedImages").children
                         .mapNotNull { it.getValue(String::class.java) }
+                    loadLikeCount(database, userId) { count ->
+                        likeCount = count
+                    }
+                    loadUploadImageCount(database, userId) { count ->
+                        uploadImageCount = count
+                    }
                 }
 
                 override fun onCancelled(error: DatabaseError) {}
@@ -134,6 +143,11 @@ fun ProfileScreen(
             }
             Spacer(modifier = Modifier.height(8.dp))
 
+            Button(onClick = {isDialogOpen = true}) {
+                Text("Статистика")
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+
             Button(onClick = onBack) {
                 Text("Назад")
             }
@@ -163,6 +177,14 @@ fun ProfileScreen(
                     )
                 }
             }
+        }
+
+        if (isDialogOpen) {
+            profileStatsDialog(
+                likeCount = likeCount,
+                uploadImageCount = uploadImageCount,
+                onDismiss = { isDialogOpen = false }
+            )
         }
 
         // Full image display logic
@@ -298,6 +320,26 @@ fun ProfileScreen(
     }
 }
 
+@Composable
+fun profileStatsDialog(likeCount: Int, uploadImageCount: Int, onDismiss: () -> Unit) {
+    androidx.compose.material.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(text = "Статистика")
+        },
+        text = {
+            Column {
+                Text(text = "Лайков: $likeCount")
+                Text(text = "Загруженно изображений: $uploadImageCount")
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("Закрыть")
+            }
+        }
+    )
+}
 
 private fun uploadImageToFirebase(
     uri: Uri,
@@ -419,4 +461,26 @@ private fun deleteImageFromFirebase(
         .addOnFailureListener { e ->
             Log.e("ProfileScreen", "Error deleting image from allImages folder: ${e.message}")
         }
+}
+
+private fun loadUploadImageCount(database: DatabaseReference, userId: String, onCountLoaded: (Int) -> Unit) {
+    val userUploadsRef = database.child(userId).child("uploadedImages")
+    userUploadsRef.get().addOnSuccessListener { snapshot ->
+        val count = snapshot.childrenCount.toInt()
+        Log.d("ProfileScreen", "Uploaded image count from Firebase: $count")
+        onCountLoaded(count)
+    }.addOnFailureListener {
+        Log.e("ProfileScreen", "Error loading upload count: ${it.message}")
+    }
+}
+
+private fun loadLikeCount(database: DatabaseReference, userId: String, onCountLoaded: (Int) -> Unit) {
+    val userLikesRef = database.child(userId).child("likes")
+    userLikesRef.get().addOnSuccessListener { snapshot ->
+        val count = snapshot.childrenCount.toInt()
+        Log.d("ProfileScreen", "Like count from Firebase: $count")
+        onCountLoaded(count)
+    }.addOnFailureListener {
+        Log.e("ProfileScreen", "Error loading like count: ${it.message}")
+    }
 }

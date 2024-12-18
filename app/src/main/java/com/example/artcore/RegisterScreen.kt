@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun RegisterScreen(
@@ -26,6 +27,13 @@ fun RegisterScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        // Большая надпись "ArtCore"
+        Text(
+            text = "ArtCore",
+            style = androidx.compose.ui.text.TextStyle(fontSize = 32.sp),
+            modifier = Modifier.padding(bottom = 32.dp)
+        )
+
         Text(text = "Регистрация", modifier = Modifier.padding(8.dp))
 
         // Поле для ввода никнейма
